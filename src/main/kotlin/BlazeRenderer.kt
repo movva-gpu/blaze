@@ -1,8 +1,11 @@
 package works.danyella
 
 import org.lwjgl.glfw.GLFW
+import org.lwjgl.glfw.GLFWImage
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11
+import org.lwjgl.stb.STBImage
+import org.lwjgl.system.MemoryStack
 import kotlin.math.tan
 
 class BlazeRenderer(private val gameObjects: MutableList<GameObject>, private var timeSinceStart: Double = 0.0) {
@@ -12,19 +15,37 @@ class BlazeRenderer(private val gameObjects: MutableList<GameObject>, private va
 
     fun init() {
         if (!GLFW.glfwInit()) {
-            val errorCode = GLFW.glfwGetError(null)
-            throw RuntimeException("Failed to initialize GLFW: $errorCode")
+            val code = GLFW.glfwGetError(null)
+            throw RuntimeException("Failed to initialize GLFW: $code")
         }
 
         window = GLFW.glfwCreateWindow(width, height, "Blaze Engine", 0, 0)
         if (window == 0L) {
-            val errorCode = GLFW.glfwGetError(null)
-            throw RuntimeException("Failed to create the GLFW window: $errorCode")
+            val code = GLFW.glfwGetError(null)
+            throw RuntimeException("Failed to create the GLFW window: $code")
         }
 
         GLFW.glfwMakeContextCurrent(window)
 
         GL.createCapabilities()
+
+        val path = "src/main/resources/icon.png"
+
+        val iconPair = BlazeEngine.loadImage(path)
+
+        val w = iconPair.second[0]
+        val h = iconPair.second[1]
+
+        MemoryStack.stackPush().use { stack ->
+            val icon = GLFWImage.malloc(1, stack)
+            icon.width(w)
+            icon.height(h)
+            icon.pixels(iconPair.first)
+
+            GLFW.glfwSetWindowIcon(window, icon)
+        }
+
+        STBImage.stbi_image_free(iconPair.first)
 
 //      GL11.glMatrixMode(GL11.GL_PROJECTION)
 //      GL11.glLoadIdentity()
@@ -42,9 +63,9 @@ class BlazeRenderer(private val gameObjects: MutableList<GameObject>, private va
 
         GL11.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
 
-        val errorCode = GLFW.glfwGetError(null)
-        if (errorCode != 0) {
-            throw RuntimeException("Failed to initialize OpenGL: $errorCode")
+        val code = GLFW.glfwGetError(null)
+        if (code != 0) {
+            throw RuntimeException("Failed to initialize OpenGL: ${code.toString(16)}")
         }
     }
 

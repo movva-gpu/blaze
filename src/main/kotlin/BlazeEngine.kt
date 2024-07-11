@@ -1,10 +1,12 @@
 package works.danyella
 
 import org.lwjgl.glfw.GLFW
-import org.lwjgl.glfw.GLFWImage
+import org.lwjgl.opengl.GL11.GL_RGBA
 import org.lwjgl.stb.STBImage
-import org.lwjgl.system.MemoryStack
+import java.io.File
+import java.nio.ByteBuffer
 import java.nio.IntBuffer
+import javax.imageio.ImageIO
 
 class BlazeEngine {
     private val gameObjects = mutableListOf<GameObject>()
@@ -14,29 +16,7 @@ class BlazeEngine {
     private val renderer = BlazeRenderer(gameObjects)
 
     init {
-
-        val width: IntBuffer = IntBuffer.allocate(1)
-        val height: IntBuffer = IntBuffer.allocate(1)
-        val comp: IntBuffer = IntBuffer.allocate(1)
-
-        val iconSTB = STBImage.stbi_load("src/main/resources/icon.png", width, height, comp, 4)
-            ?: throw RuntimeException("Failed to load image: ${STBImage.stbi_failure_reason()}")
-
-        val w = width[0]
-        val h = height[0]
-
-        MemoryStack.stackPush().use { stack ->
-            val icon = GLFWImage.malloc(1, stack)
-            icon.width(w)
-            icon.height(h)
-            icon.pixels(iconSTB)
-
-            renderer.init()
-
-            GLFW.glfwSetWindowIcon(renderer.getWindow(), icon)
-        }
-
-        STBImage.stbi_image_free(iconSTB)
+        renderer.init()
     }
 
     fun startGameLoop() {
@@ -95,5 +75,22 @@ class BlazeEngine {
         renderer.removeGameObject(gameObject)
     }
 
+    companion object {
+        fun loadImage(path: String): Pair<ByteBuffer, IntArray> {
+            val imageFile = ImageIO.read(File(path));
+
+            val width: IntBuffer = ByteBuffer.allocateDirect(imageFile.width).asIntBuffer()
+            val height: IntBuffer = ByteBuffer.allocateDirect(imageFile.height).asIntBuffer()
+            val comp: IntBuffer = ByteBuffer.allocateDirect(GL_RGBA).asIntBuffer()
+
+            val imageSTB = STBImage.stbi_load(path, width, height, comp, 4)
+                ?: throw RuntimeException("Failed to load image: ${STBImage.stbi_failure_reason()}")
+
+            val w = width[0]
+            val h = height[0]
+
+            return Pair(imageSTB, intArrayOf(w, h))
+        }
+    }
 }
 
