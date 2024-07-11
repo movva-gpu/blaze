@@ -11,12 +11,14 @@ class BlazeRenderer {
 
     fun init() {
         if (!GLFW.glfwInit()) {
-            throw RuntimeException("Failed to initialize GLFW")
+            val errorCode = GLFW.glfwGetError(null)
+            throw RuntimeException("Failed to initialize GLFW: $errorCode")
         }
 
         window = GLFW.glfwCreateWindow(width, height, "Blaze Engine", 0, 0)
         if (window == 0L) {
-            throw RuntimeException("Failed to create the GLFW window")
+            val errorCode = GLFW.glfwGetError(null)
+            throw RuntimeException("Failed to create the GLFW window: $errorCode")
         }
 
         GLFW.glfwMakeContextCurrent(window)
@@ -26,6 +28,11 @@ class BlazeRenderer {
         GL11.glViewport(0, 0, width, height)
 
         GL11.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
+
+        val errorCode = GLFW.glfwGetError(null)
+        if (errorCode != 0) {
+            throw RuntimeException("Failed to initialize OpenGL: $errorCode")
+        }
     }
 
     fun renderScene(deltaTime: Double) {
