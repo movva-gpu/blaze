@@ -1,11 +1,12 @@
 package works.danyella
 
-import org.lwjgl.glfw.*
-import org.lwjgl.opengl.*
+import org.lwjgl.glfw.GLFW
+import org.lwjgl.opengl.GL
+import org.lwjgl.opengl.GL11
+import kotlin.math.tan
 
-class BlazeRenderer {
-    private val gameObjects: MutableList<GameObject> = mutableListOf()
-    private var window: Long = 0
+class BlazeRenderer(private val gameObjects: MutableList<GameObject>, private var timeSinceStart: Double = 0.0) {
+    private var window = 0L
     private var width = 800
     private var height = 600
 
@@ -25,6 +26,18 @@ class BlazeRenderer {
 
         GL.createCapabilities()
 
+//      GL11.glMatrixMode(GL11.GL_PROJECTION)
+//      GL11.glLoadIdentity()
+//      GL11.glMatrixMode(GL11.GL_MODELVIEW)
+//      GL11.glLoadIdentity()
+        val aspectRatio = width.toDouble() / height.toDouble()
+        val near = 0.1
+        val far = 50000.0
+        val fov = 90
+        val top = tan(Math.toRadians(fov / 2.0)) * near
+        val right = top * aspectRatio
+        GL11.glFrustum(-right, right, -top, top, near, far)
+
         GL11.glViewport(0, 0, width, height)
 
         GL11.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
@@ -36,13 +49,8 @@ class BlazeRenderer {
     }
 
     fun renderScene(deltaTime: Double) {
-        // Clear the screen
         clearScreen()
-
-        // Iterate over the game objects and call their render() methods
         gameObjects.forEach { it.render(deltaTime) }
-
-        // Swap the front and back buffers to display the newly rendered frame
         swapBuffers()
     }
 
