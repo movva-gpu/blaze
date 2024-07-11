@@ -1,6 +1,6 @@
 package works.danyella
 
 interface GameObject {
-    fun update(delaTime: Double)
-    fun render(delaTime: Double)
+    fun update(deltaTime: Double)
+    fun render(deltaTime: Double)
 }
