@@ -3,6 +3,7 @@ package works.danyella
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.opengl.GL11.GL_RGBA
 import org.lwjgl.stb.STBImage
+import org.lwjgl.system.MemoryStack
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.IntBuffer
@@ -76,20 +77,59 @@ class BlazeEngine {
     }
 
     companion object {
+        /**
+         * Explanation:
+         *
+         * `stbi_load mentions` this:
+         *
+         * ```cpp
+         * // Basic usage (see HDR discussion below for HDR usage):
+         * //    int x,y,n;
+         * //    unsigned char *data = stbi_load(filename, &x, &y, &n, 0);
+         * //    // ... process data if not NULL ...
+         * //    // ... x = width, y = height, n = # 8-bit components per pixel ...
+         * //    // ... replace '0' with '1'..'4' to force that many components per pixel
+         * //    // ... but 'n' will always be the number that it would have been if you said 0
+         * ```
+         *
+         * So in [your code](https://github.com/movva-gpu/blaze/blob/82e98cedf772e7aaeec351d5796227c2acf2adcb/src/main/kotlin/BlazeEngine.kt#L79)
+         * you allocate 3 direct buffers that are the size of your image.
+         *
+         * The buffers should be the size of an integer in bytes not the image size.
+         * Though a second issue occurs that the byteBuffers use big endian by default based on this:
+         *
+         * Allocates a new direct byte buffer.
+         *
+         * The new buffer's position will be zero, its limit will be its capacity, its mark will be undefined, each of its elements will be initialized to zero, and its byte order will be BIG_ENDIAN. Whether or not it has a backing array is unspecified.
+         *
+         * So basically you would need to set up your 3 buffers as so:
+         * ```kt
+         *   val width: IntBuffer = ByteBuffer.allocateDirect(Int.SIZE_BYTES).order(ByteOrder.nativeOrder()).asIntBuffer()
+         *   val height: IntBuffer = ByteBuffer.allocateDirect(Int.SIZE_BYTES).order(ByteOrder.nativeOrder()).asIntBuffer()
+         *   val comp: IntBuffer = ByteBuffer.allocateDirect(Int.SIZE_BYTES).order(ByteOrder.nativeOrder()).asIntBuffer()
+         *   comp.put(GL_RGBA)
+         *   comp.flip()
+         * ```
+         *
+         * Authors: Someone on the [LWJGL Discord Server](https://discord.gg/6CywMCs)
+         *
+         */
         fun loadImage(path: String): Pair<ByteBuffer, IntArray> {
-            val imageFile = ImageIO.read(File(path));
+            MemoryStack.stackPush().use { stack ->
+                val width: IntBuffer = stack.mallocInt(1);
+                val height: IntBuffer = stack.mallocInt(1);
+                val comp: IntBuffer = stack.mallocInt(1);
+                comp.put(GL_RGBA)
+                comp.flip()
 
-            val width: IntBuffer = ByteBuffer.allocateDirect(imageFile.width).asIntBuffer()
-            val height: IntBuffer = ByteBuffer.allocateDirect(imageFile.height).asIntBuffer()
-            val comp: IntBuffer = ByteBuffer.allocateDirect(GL_RGBA).asIntBuffer()
+                val imageSTB = STBImage.stbi_load(path, width, height, comp, 4)
+                    ?: throw RuntimeException("Failed to load image: ${STBImage.stbi_failure_reason()}")
 
-            val imageSTB = STBImage.stbi_load(path, width, height, comp, 4)
-                ?: throw RuntimeException("Failed to load image: ${STBImage.stbi_failure_reason()}")
+                val w = width[0]
+                val h = height[0]
 
-            val w = width[0]
-            val h = height[0]
-
-            return Pair(imageSTB, intArrayOf(w, h))
+                return Pair(imageSTB, intArrayOf(w, h))
+            }
         }
     }
 }
